@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     # Comma-separated in .env, e.g. "http://localhost:3000,https://maketravo.com"
     CORS_ORIGINS: str = "http://localhost:3000"
 
+    # --- database ---
+    MONGODB_URI: SecretStr
+    MONGODB_DB_NAME: str
+
+    MONGODB_MAX_POOL_SIZE: int = 30
+    MONGODB_MIN_POOL_SIZE: int = 0
+    MONGODB_SERVER_SELECTION_TIMEOUT_MS: int = 5_000
+    MONGODB_CONNECT_TIMEOUT_MS: int = 10_000
+    MONGODB_SOCKET_TIMEOUT_MS: int = 20_000
+
+    MONGODB_AUTO_CREATE_INDEXES: bool = True
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
@@ -27,7 +39,7 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()  # type: ignore[call-arg]
 
 
 settings = get_settings()

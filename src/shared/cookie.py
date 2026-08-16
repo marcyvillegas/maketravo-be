@@ -1,5 +1,9 @@
-from dataclasses import dataclass
+# memoryview[int] below is only subscriptable at runtime on 3.14+; this makes
+# all annotations in the module lazy strings, so it stays a checker-only type.
+from __future__ import annotations
+
 from typing import Any, Protocol
+from src.firebase.constants import MAX_SESSION_TTL
 from src.shared.constants import EnviromnentEnums
 from src.config import settings
 
@@ -39,24 +43,25 @@ class CookieSettings:
 
 # Cookie protocol
 class _CookieProtocol(Protocol):
-    "Protocol is used to make it modular"
+    """Structural type so the service layer doesn't import FastAPI.
 
-    def set_cookie(self, **kwargs: Any) -> Any: ...
-    def delete_cookie(self, *args: Any, **kwargs: Any) -> Any: ...
+    In practice this only ever receives a real ``Response``. It's kept so a
+    service with real logic can be unit-tested against a fake object that
+    just records the cookie it was handed.
+    """
+
+    def set_cookie(self, *args: Any, **kwargs: Any) -> None: ...
+    def delete_cookie(self, *args: Any, **kwargs: Any) -> None: ...
 
 
 def create_cookie(
-    *,
-    cookie: CookieSettings,
-    response: _CookieProtocol,
-    session_max_age: int,
-    cookie_value: str
+    *, cookie: CookieSettings, response: _CookieProtocol, cookie_value: str
 ) -> None:
 
     response.set_cookie(
         key=cookie.name,
         value=cookie_value,
-        max_age=session_max_age,
+        max_age=int(MAX_SESSION_TTL.total_seconds()),
         httponly=True,
         secure=cookie.secure,
         samesite=cookie.samesite,

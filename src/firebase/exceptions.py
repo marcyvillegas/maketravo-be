@@ -49,6 +49,41 @@ class StaleSignIn(BaseDomainException):
     status_code = StatusCode.UNAUTHORIZED
 
 
+_ERROR_MAP: dict[type[fb_exceptions.FirebaseError], type[BaseDomainException]] = {
+    fb_auth.ExpiredIdTokenError: CredentialExpired,
+    fb_auth.RevokedIdTokenError: CredentialRevoked,
+    fb_auth.ExpiredSessionCookieError: CredentialExpired,
+    fb_auth.RevokedSessionCookieError: CredentialRevoked,
+    fb_auth.InvalidIdTokenError: InvalidCredential,
+    fb_auth.InvalidSessionCookieError: InvalidCredential,
+    fb_auth.UserDisabledError: UserDisabled,
+    fb_auth.CertificateFetchError: AuthUnavailable,
+}
+
+
+def _to_domain_exception(e: fb_exceptions.FirebaseError) -> BaseDomainException:
+    """Resolve a Firebase error to its nearest mapped domain exception.
+
+    type(e).__mro__ is SomeClass.__mro__
+
+    __mro__ returns a tuple of ancestors of that class. Thus, looping and checking if
+    an ancestral class is in the _ERROR_MAP dict. It uses a child-first-then-parent
+    arrangement
+
+    e.g.  UserDisabledError (the needed exception) -> FirebaseError (parent class)
+    """
+
+    scope = "src.firebase.auth_client"
+
+    for exception_class in type(e).__mro__:
+        domain_exc = _ERROR_MAP.get(exception_class)
+        if domain_exc is not None:
+            return domain_exc(scope=scope)
+
+    logger.warning(f"Unmapped Firebase error: {type(e).__name__}: {e}")
+    return AuthUnavailable(scope=scope)
+
+
 # Function decorator
 def handle_firebase_auth_error(func):
 
@@ -56,27 +91,7 @@ def handle_firebase_auth_error(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except fb_auth.ExpiredIdTokenError as e:
-            raise CredentialExpired() from e
-        except fb_auth.RevokedIdTokenError as e:
-            raise CredentialRevoked() from e
-        except fb_auth.ExpiredSessionCookieError as e:
-            raise CredentialExpired() from e
-        except fb_auth.RevokedSessionCookieError as e:
-            raise CredentialRevoked() from e
-        except fb_auth.InvalidIdTokenError as e:
-            raise InvalidCredential() from e
-        except fb_auth.InvalidSessionCookieError as e:
-            raise InvalidCredential() from e
-        except fb_auth.UserDisabledError as e:
-            raise UserDisabled() from e
-        except fb_auth.CertificateFetchError as e:
-            raise AuthUnavailable() from e
         except fb_exceptions.FirebaseError as e:
-            logger.warning(f"Unmapped Firebase error: {type(e).__name__}: {e}")
-            raise AuthUnavailable() from e
+            raise _to_domain_exception(e) from e
 
     return wrapper
-
-
-# Exceptions handling for HTTP response
