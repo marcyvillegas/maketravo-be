@@ -1,10 +1,25 @@
 # Python 3.12
+# Runtime dependencies. Install with:  pip install -r requirement.txt
 
 fastapi==0.141.1
+uvicorn[standard]==0.52.0
 firebase-admin==7.5.0
-pydantic==2.13.4
+
+# The [email] extra pulls in email-validator, which EmailStr needs.
+# Without it, importing any model with an EmailStr field raises at startup.
+pydantic[email]==2.13.4
 pydantic-settings==2.15.0
 python-dotenv==1.2.2
-uvicorn[standard]==0.52.0
 
+# dnspython (needed for mongodb+srv:// Atlas URIs) is a BASE dependency
+# of pymongo 4.17 — no [srv] extra required.
 pymongo==4.17.0
+
+# testing
+pytest==9.1.1
+pytest-asyncio==1.4.0      # lets pytest run `async def` tests
+
+httpx2==2.12.0             # calls the app in-process; no server needed
+asgi-lifespan==2.1.0       # runs startup/shutdown in integration tests
+polyfactory==3.3.0         # generates model instances for tests
+mypy==1.18.2               # without this, the repository contract is unchecked

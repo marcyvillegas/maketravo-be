@@ -11,6 +11,7 @@ from src.mongodb.connection import MongoConnection
 # from src.database.indexes import ensure_indexes
 # from src.health.router import router as health_router
 from src.modules.sessions.router import router as sessions_router
+from src.modules.trip_projects.router import router as trip_projects_router
 from src.modules.users.router import router as users_router
 from src.shared.exceptions.global_exception import register_exception_handlers
 
@@ -95,5 +96,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # app.include_router(health_router, tags=["Health"])
     app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])
     app.include_router(users_router, prefix="/api/users", tags=["Users"])
+    app.include_router(
+        trip_projects_router, prefix="/api/trip-projects", tags=["Trip Projects"]
+    )
 
     return app

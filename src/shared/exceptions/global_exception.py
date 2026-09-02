@@ -6,7 +6,7 @@ This handles global exceptions seamlessly.
 
 import uuid
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from src.logging import scope_logger
@@ -14,6 +14,42 @@ from src.shared.exceptions.base import BaseDomainException
 from src.shared.exceptions.error_codes import GlobalErrorCode
 from src.shared.exceptions.error_messages import GlobalErrorMessage
 from src.shared.exceptions.status_codes import StatusCode
+
+
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    HTTPExceptions raised by Starlette/FastAPI itself — e.g. HTTPBearer's
+    401 "Not authenticated" when the Authorization header is absent —
+    bypass our BaseDomainException hierarchy entirely. Starlette special-
+    cases HTTPException ahead of any handler registered on the bare
+    Exception class, so unless this is registered too, those responses
+    leak out as Starlette's own `{"detail": ...}` shape instead of our
+    envelope.
+    """
+
+    logger = scope_logger()
+
+    code = (
+        GlobalErrorCode.AUTH_MISSING_TOKEN
+        if exc.detail == "Not authenticated"
+        else GlobalErrorCode.HTTP_EXCEPTION
+    )
+
+    trace_id = str(uuid.uuid4())
+    logger.warning(f"[Trace ID: {trace_id}] {code.value}: {exc.detail}")
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": {
+                "code": code.value,
+                "message": exc.detail,
+                "trace_id": trace_id,
+            },
+        },
+        headers=exc.headers,
+    )
 
 
 async def domain_exception_handler(request: Request, exc: BaseDomainException):
@@ -70,5 +106,6 @@ async def production_safety_net_handler(request: Request, exc: Exception):
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Called from main.py — keeps the import pointing one way only."""
+    app.add_exception_handler(HTTPException, http_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(BaseDomainException, domain_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, production_safety_net_handler)

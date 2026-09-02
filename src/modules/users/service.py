@@ -15,8 +15,7 @@ async def create_user(
     user_repo: UserRepo,
     payload: CreateUserRequest | None = None,
 ) -> User | None:
-    # Identity comes from the SIGNED token, never from the body. The body's
-    # user_data is only consulted for display fields the token may omit.
+
     uid: str = claims["uid"]
     email = claims.get("email") or (payload.email if payload else None)
 
@@ -32,8 +31,7 @@ async def create_user(
             email=email,
             display_name=claims.get("name")
             or (payload.display_name if payload else None),
-            photo_url=claims.get("picture")
-            or (payload.photo_url if payload else None),
+            photo_url=claims.get("picture") or (payload.photo_url if payload else None),
         )
     )
 

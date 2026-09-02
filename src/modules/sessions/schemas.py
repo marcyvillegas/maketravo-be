@@ -14,6 +14,6 @@ class CreateSessionRequest(BaseModel):
     # The client SDK uses camelCase; accept that without renaming our fields.
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
-    email: EmailStr | None = None
-    display_name: str | None = Field(default=None, alias="displayName")
-    photo_url: str | None = Field(default=None, alias="photoURL")
+    email: EmailStr
+    display_name: str = Field(..., alias="displayName")
+    photo_url: str = Field(..., alias="photoURL")

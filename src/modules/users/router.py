@@ -48,7 +48,7 @@ async def get_user(
 
 
 @router.post(
-    "/",
+    "",
     status_code=status.HTTP_201_CREATED,
     summary="Create a user record for the caller",
     response_model=SuccessResponse[User],
