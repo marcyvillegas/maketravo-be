@@ -15,6 +15,11 @@ security = HTTPBearer()
 logger = scope_logger()
 
 
+# @router.get("", status_code=status.HTTP_204_NO_CONTENT)
+# def get_session():
+#     return
+
+
 @router.post("", status_code=status.HTTP_204_NO_CONTENT)
 async def create_session(
     request: Request,

@@ -1,9 +1,9 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-class CreateSessionRequest(BaseModel):
+class CreateUserRequest(BaseModel):
     """
-    Body of POST /api/sessions.
+    Body of POST /api/users.
 
     Client-supplied and therefore UNTRUSTED — anyone holding a valid ID token
     can post whatever they like here. Identity comes from the verified token;

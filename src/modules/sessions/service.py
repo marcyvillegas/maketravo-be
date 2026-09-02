@@ -11,6 +11,12 @@ from src.logging import scope_logger
 
 logger = scope_logger()
 
+# async def get_session(
+#     *,
+#     response: _CookieProtocol,
+#     credential: HTTPAuthorizationCredentials,
+# ):
+
 
 async def create_session(
     *,
@@ -35,8 +41,7 @@ async def create_session(
     # Identity comes from the SIGNED token, never from the body. The body's
     # user_data is only consulted for display fields the token may omit.
     uid: str = claims["uid"]
-    email = claims.get("email")
-    supplied = payload.user_data if payload else None
+    email = claims.get("email") or (payload.email if payload else None)
 
     if email is None:
         logger.warning(f"token for {uid} carries no email; skipping user upsert")
@@ -49,9 +54,9 @@ async def create_session(
                 firebase_uid=uid,
                 email=email,
                 display_name=claims.get("name")
-                or (supplied.display_name if supplied else None),
+                or (payload.display_name if payload else None),
                 photo_url=claims.get("picture")
-                or (supplied.photo_url if supplied else None),
+                or (payload.photo_url if payload else None),
             )
         )
         logger.info(f"created user record for {uid}")

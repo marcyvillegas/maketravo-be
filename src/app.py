@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+import time
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from src.config import Settings, get_settings
 from src.mongodb.connection import MongoConnection
@@ -9,6 +11,7 @@ from src.mongodb.connection import MongoConnection
 # from src.database.indexes import ensure_indexes
 # from src.health.router import router as health_router
 from src.modules.sessions.router import router as sessions_router
+from src.modules.users.router import router as users_router
 from src.shared.exceptions.global_exception import register_exception_handlers
 
 # from src.users.router import router as users_router
@@ -55,12 +58,42 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
     )
 
+    # Measure process time
+    # Pure ASGI middleware, not @app.middleware("http")/BaseHTTPMiddleware:
+    # BaseHTTPMiddleware rebuilds the outgoing response from the streamed
+    # body and is known to drop repeated headers (e.g. multiple Set-Cookie
+    # entries), which silently ate the session cookie set in the sessions
+    # route.
+    class ProcessTimeMiddleware:
+        def __init__(self, app: ASGIApp) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            if scope["type"] != "http":
+                await self.app(scope, receive, send)
+                return
+
+            start_time = time.perf_counter()
+
+            async def send_wrapper(message: Message) -> None:
+                if message["type"] == "http.response.start":
+                    process_time = time.perf_counter() - start_time
+                    headers = message.setdefault("headers", [])
+                    headers.append(
+                        (b"x-process-time", str(process_time).encode("latin-1"))
+                    )
+                await send(message)
+
+            await self.app(scope, receive, send_wrapper)
+
+    app.add_middleware(ProcessTimeMiddleware)
+
     # Global exceptions
     register_exception_handlers(app)
 
     # Routes
     # app.include_router(health_router, tags=["Health"])
     app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])
-    # app.include_router(users_router, prefix="/api/users", tags=["Users"])
+    app.include_router(users_router, prefix="/api/users", tags=["Users"])
 
     return app

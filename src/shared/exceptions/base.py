@@ -9,6 +9,10 @@ class BaseDomainException(Exception):
     status_code: int = StatusCode.INTERNAL_SERVER_ERROR
     scope: str | None = None
 
+    # Docstring/Swagger metadata only — never sent in a response body. Use
+    # `message` for the text actually returned to callers.
+    description: str = ""
+
     def __init__(
         self,
         *,
