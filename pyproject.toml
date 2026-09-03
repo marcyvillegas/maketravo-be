@@ -1,4 +1,69 @@
+# pyproject.toml is the standardized, tool-agnostic config file for Python
+# projects (PEP 518/621). It replaces the old pattern of one dotfile per
+# tool (setup.py, setup.cfg, requirement.txt, pytest.ini, mypy.ini, ...)
+# with a single file where each tool reads its own [tool.<name>] table, plus
+# a [project] table for package identity and dependencies (PEP 621) and a
+# [build-system] table telling pip which backend to use to build/install it.
+#
+# This is the single source of truth for dependencies — requirement.txt has
+# been retired. Install with:  pip install -e ".[dev]"
+
+[build-system]
+# hatchling: a lightweight PEP 517 build backend. Needs no extra config here
+# because the project already follows its default layout (a top-level
+# package dir matching the project name would be auto-detected; since this
+# repo's importable code lives under src/ as "src.*", not a package named
+# "maketravo", packaging metadata only is used — see tool.hatch.build below).
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "maketravo-be"
+version = "0.1.0"
+description = "MakeTravo backend: FastAPI + MongoDB (async PyMongo) + Firebase Admin (Auth)"
+requires-python = ">=3.12"
+
+dependencies = [
+    "fastapi==0.141.1",
+    "uvicorn[standard]==0.52.0",
+    "firebase-admin==7.5.0",
+    # The [email] extra pulls in email-validator, which EmailStr needs.
+    # Without it, importing any model with an EmailStr field raises at startup.
+    "pydantic[email]==2.13.4",
+    "pydantic-settings==2.15.0",
+    "python-dotenv==1.2.2",
+    # dnspython (needed for mongodb+srv:// Atlas URIs) is a BASE dependency
+    # of pymongo 4.17 — no [srv] extra required.
+    "pymongo==4.17.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",   # lets pytest run `async def` tests
+    "httpx2==2.12.0",          # calls the app in-process; no server needed
+    "asgi-lifespan==2.1.0",    # runs startup/shutdown in integration tests
+    "polyfactory==3.3.0",      # generates model instances for tests
+    "mypy==1.18.2",            # without this, the repository contract is unchecked
+]
+
+[tool.hatch.build.targets.wheel]
+# This repo isn't published as a distributable package (it's a service, run
+# in place via uvicorn) — `pip install -e .` only needs an editable install
+# that resolves dependencies and puts the repo root on sys.path. Point the
+# wheel target at src/ so hatchling doesn't error out searching for a
+# "maketravo_be" package dir that doesn't exist.
+packages = ["src"]
+
 [tool.pyright]
 include = ["src"]
-typeCheckingMode = "basic"
+typeCheckingMode = "basic"  # catches obvious type errors without requiring full annotation coverage
 pythonVersion = "3.12"
+
+[tool.pytest.ini_options]
+# pytest-asyncio requires an explicit mode. "strict" means only tests
+# explicitly marked with @pytest.mark.asyncio are treated as async tests
+# (the implicit "auto" mode silently collects any async def as a test,
+# which is easy to trip over accidentally). All existing async tests in
+# src/tests already use the marker, so strict mode matches current usage.
+asyncio_mode = "strict"

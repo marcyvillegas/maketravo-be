@@ -14,16 +14,19 @@ There is no Makefile/task runner — everything goes through the venv directly.
 # Setup
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirement.txt
+pip install -e ".[dev]"
 
 # Run the dev server (reload on change)
 uvicorn main:app --reload
 
 # Type check (pyright is installed; config lives in pyproject.toml)
 pyright
+
+# Run tests (requires local MongoDB on localhost:27017 — see src/tests/)
+pytest
 ```
 
-There is no test framework installed yet (`src/tests/` exists but is empty/unpopulated, and pytest is not in `requirement.txt`). Don't assume `pytest` works until it's added.
+Dependencies (runtime + dev) are declared in `pyproject.toml` under `[project.dependencies]` / `[project.optional-dependencies].dev` — there is no `requirement.txt` anymore. `src/tests/` has integration tests under `src/tests/integration/`; they spin up the app in-process (`httpx` + `asgi-lifespan`) against a local MongoDB and reset it via `pytest_sessionstart`/`pytest_sessionfinish` in `conftest.py`.
 
 No linter/formatter (ruff/black/flake8) is configured in this repo currently.
 

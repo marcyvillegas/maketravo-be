@@ -2,6 +2,10 @@ import pytest
 
 from src.modules.users.exceptions import UserAlreadyExists
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class TestExistingUser:
 
@@ -24,6 +28,8 @@ class TestExistingUser:
             },
             headers={"Authorization": f"Bearer {token}"},
         )
+
+        logger.info(f"Response JSON: {response.json()}")
 
         # Assert that the response is successful and contains the expected data
         assert response.status_code == UserAlreadyExists.status_code
