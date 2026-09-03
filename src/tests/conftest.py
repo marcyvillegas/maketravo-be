@@ -1,11 +1,15 @@
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
+import pytest_asyncio
+from asgi_lifespan import LifespanManager
+from httpx import ASGITransport, AsyncClient
 from pymongo import MongoClient
+
+pytest_plugins = ("src.tests.fixtures.users", "src.tests.fixtures.firebase")
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR))
@@ -33,23 +37,32 @@ def require_local_mongodb() -> Iterator[None]:
         mongo.close()
 
 
-class FakeFirebaseAuth:
-    def verify_id_token(self, token: str) -> dict[str, str]:
-        return {
-            "uid": f"user-{token}",
-            "email": f"{token}@example.com",
-        }
-
-
-@pytest.fixture
-def client() -> Iterator[TestClient]:
+@pytest_asyncio.fixture
+async def client() -> AsyncIterator[AsyncClient]:
     from src.app import create_app
     from src.firebase.dependencies import get_firebase_auth
+    from src.tests.fixtures.firebase import FakeFirebaseAuth
 
     app = create_app()
     app.dependency_overrides[get_firebase_auth] = lambda: FakeFirebaseAuth()
 
-    with TestClient(app, raise_server_exceptions=True) as test_client:
-        yield test_client
+    async with LifespanManager(app):
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as test_client:
+            yield test_client
 
     app.dependency_overrides.clear()
+
+
+def pytest_sessionfinish(
+    session: pytest.Session,
+    exitstatus: int | pytest.ExitCode,
+) -> None:
+    """Clean up the test database after the test session is complete."""
+    mongo = MongoClient(TEST_MONGO_URI)
+    try:
+        mongo.drop_database(TEST_DB_NAME)
+    finally:
+        mongo.close()
