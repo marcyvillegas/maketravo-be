@@ -36,7 +36,7 @@ async def local_database() -> AsyncIterator[AsyncDatabase]:
         await mongo.close()
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest_asyncio.fixture()
 async def client(local_database: AsyncDatabase) -> AsyncIterator[AsyncClient]:
     from src.app import create_app
     from src.mongodb.dependencies import get_database

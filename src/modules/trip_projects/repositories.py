@@ -14,7 +14,9 @@ COLLECTION = "trip_projects"
 # === The contract / Interface ==================
 class ListRecent(Protocol):
 
-    def __call__(self, *, limit: int = 20) -> Awaitable[list[TripProject | None]]: ...
+    def __call__(
+        self, *, limit: int = 20, skip: int = 0
+    ) -> Awaitable[list[TripProject | None]]: ...
 
 
 class TripProjectRepo(NamedTuple):
@@ -50,8 +52,8 @@ def mongo_trip_project_repo(db: AsyncDatabase) -> TripProjectRepo:
         )
 
     @handle_mongo_error
-    async def list_recent(*, limit: int = 20) -> list[TripProject | None]:
-        cursor = col.find().sort("created_at", DESCENDING).limit(limit)
+    async def list_recent(*, limit: int = 20, skip: int = 0) -> list[TripProject | None]:
+        cursor = col.find().sort("created_at", DESCENDING).skip(skip).limit(limit)
         return [TripProject.from_mongo(d) for d in await cursor.to_list(length=limit)]
 
     return TripProjectRepo(

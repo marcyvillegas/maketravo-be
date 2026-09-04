@@ -40,3 +40,34 @@ async def create_trip_project(
         claims=claims, trip_project_repo=trip_project_repo, payload=payload
     )
     return SuccessResponse(data=project)
+
+
+@router.get(
+    "",
+    status_code=status.HTTP_200_OK,
+    summary="List trip projects",
+    response_model=SuccessResponse[list[TripProject | None]],
+    responses={
+        **_UNAUTHENTICATED_RESPONSES,
+    },
+)
+async def get_trip_projects(
+    claims: VerifiedTokenClaimsDep,
+    trip_project_repo: TripProjectRepoDep,
+    limit: int = 20,
+    skip: int = 0,
+):
+    """
+    List `TripProject` records, most recently created first.
+
+    **Auth:** `Authorization: Bearer <Firebase ID token>` required.
+
+    **Pagination:** `limit` (page size, default 20) and `skip` (offset,
+    default 0).
+
+    **Returns:** `{"success": true, "data": [<TripProject>, ...]}`.
+    """
+    projects = await service.get_trip_projects(
+        trip_project_repo=trip_project_repo, limit=limit, skip=skip
+    )
+    return SuccessResponse(data=projects)

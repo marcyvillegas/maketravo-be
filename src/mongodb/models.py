@@ -21,8 +21,12 @@ class MongoModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     # Mongo calls it "_id"; Python can't use a leading underscore as a normal
-    # field name, and our API should expose "id". alias= bridges the two.
-    id: str | None = Field(default=None, alias="_id")
+    # field name, and our API should expose "id". validation_alias reads
+    # Mongo's "_id" in; serialization_alias is pinned to "id" so FastAPI's
+    # response_model (by_alias=True by default) still emits "id", not "_id".
+    id: str | None = Field(
+        default=None, validation_alias="_id", serialization_alias="id"
+    )
 
     @classmethod
     def from_mongo(cls, doc: dict | None):
@@ -36,4 +40,4 @@ class MongoModel(BaseModel):
 
     def to_mongo(self) -> dict:
         """Model → document. Drop id — Mongo assigns _id on insert."""
-        return self.model_dump(by_alias=True, exclude_none=True, exclude={"id"})
+        return self.model_dump(exclude_none=True, exclude={"id"})

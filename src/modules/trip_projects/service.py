@@ -1,5 +1,6 @@
 from typing import Any
 
+from src.modules.users.exceptions import EmailNotAvailable
 from src.modules.trip_projects.models import TripProject
 from src.modules.trip_projects.repositories import TripProjectRepo
 from src.modules.trip_projects.schemas import CreateTripProjectRequest
@@ -27,3 +28,13 @@ async def create_trip_project(
     logger.info(f"created trip project for {uid}")
 
     return project
+
+
+async def get_trip_projects(
+    *,
+    trip_project_repo: TripProjectRepo,
+    limit: int = 20,
+    skip: int = 0,
+) -> list[TripProject | None]:
+    return await trip_project_repo.list_recent(limit=limit, skip=skip)
+    # raise EmailNotAvailable()
