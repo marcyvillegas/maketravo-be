@@ -10,6 +10,7 @@ memory during review.
 |---|---|---|---|
 | `new-module` | skill | `.claude/skills/new-module/SKILL.md` | Scaffold a new `src/modules/<name>/` feature module |
 | `convention-check` | skill | `.claude/skills/convention-check/SKILL.md` | Checklist pass over changed files before commit/PR |
+| `backend-review` | skill | `.claude/skills/backend-review/SKILL.md` | Invoke the `backend-reviewer` agent for a deeper branch review |
 | `backend-reviewer` | agent | `.claude/agents/backend-reviewer.md` | Deeper, independent review of a branch/diff before opening a PR |
 
 ## Day-to-day flow
@@ -30,14 +31,13 @@ memory during review.
    dependency injection style, router registration) over your changed files
    and reports violations with file:line. Fast, inline, no subagent spin-up.
 
-4. **Before opening a PR** (or when you want a second opinion) → ask for the
-   `backend-reviewer` agent, or run it via Task/Agent with
-   `subagent_type: backend-reviewer`. It re-reads `CLAUDE.md`, diffs your
-   branch against `main`, reads full files (not just hunks) for context, and
-   reports verified findings via `ReportFindings` — same conventions as
-   `convention-check` but with full-file context and room to catch
-   correctness bugs the checklist doesn't cover (bad awaits, N+1 queries,
-   alias mismatches).
+4. **Before opening a PR** (or when you want a second opinion) → run
+   `/backend-review`. It invokes the `backend-reviewer` agent, which re-reads
+   `CLAUDE.md`, diffs your branch against `main`, reads full files (not just
+   hunks) for context, and reports verified findings via `ReportFindings` —
+   same conventions as `convention-check` but with full-file context and room
+   to catch correctness bugs the checklist doesn't cover (bad awaits, N+1
+   queries, alias mismatches).
 
 5. **Type check** → `pyright` (already configured via `pyproject.toml`) —
    run this regardless; none of the above substitute for it.
@@ -51,7 +51,7 @@ new-module  →  implement  →  convention-check  →  pyright  →  backend-re
 
 - Use **`convention-check`** for a quick pass on your own work-in-progress —
   it's cheap and inline, good to run repeatedly as you write code.
-- Use **`backend-reviewer`** once, right before a PR — it's a full agent
+- Use **`/backend-review`** once, right before a PR — it's a full agent
   invocation (reads whole files, reasons harder) so it's worth more but
   costs more. Don't run it on every save.
 - Use **`new-module`** only for genuinely new resources. For changes inside
